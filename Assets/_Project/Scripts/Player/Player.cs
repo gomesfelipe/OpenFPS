@@ -17,6 +17,9 @@ public class Player : MonoBehaviour
     [Space]
     [SerializeField] private Volume volume;
     [SerializeField] private StanceVignette stanceVignette;
+
+    [SerializeField] private GameObject zombiePrefab;
+
     private PlayerInputActions _inputActions;
 
     void Start()
@@ -45,7 +48,8 @@ public class Player : MonoBehaviour
         {
         playerHealth.OnDamageTaken += (amount, current) => playerUI.UpdateHealth(current);
         playerHealth.OnHealthRestored += (amount, current) => playerUI.UpdateHealth(current);
-        playerHealth.OnDeath += () => Debug.Log("Died");            
+        playerHealth.OnDeath += () => Debug.Log("Died");
+        playerHealth.OnBecameZombie += TransformIntoZombie;
         }
 
     }
@@ -97,6 +101,27 @@ public class Player : MonoBehaviour
             cameraTarget.up
             );
         stanceVignette.UpdateVignette(deltaTime, state.Stance);
+    }
+    private void TransformIntoZombie()
+    {
+        // Save position
+        transform.GetPositionAndRotation(out Vector3 position, out Quaternion rotation);
+
+        // Instancia zumbi
+        var zombieInstance = Instantiate(zombiePrefab, position, rotation);
+
+        if (zombieInstance.TryGetComponent<Enemy>(out var zombieEnemy))
+        {
+            // Opcional: defina o alvo para zumbis humanos restantes
+            GameObject playerTarget = FindObjectOfType<Player>()?.gameObject;
+            if (playerTarget != null)
+            {
+                zombieEnemy.SetTarget(playerTarget.transform);
+            }
+        }
+
+        // Destroi o jogador original
+        Destroy(gameObject);
     }
     public void Teleport(Vector3 position)
     {

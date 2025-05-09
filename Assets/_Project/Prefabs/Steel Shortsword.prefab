@@ -97,26 +97,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 297cffeb106da4f49ab44e4c57691635, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  animator: {fileID: 0}
+  _anim: {fileID: 0}
+  audioSource: {fileID: 0}
+  attackSound: {fileID: 0}
+  hitSound: {fileID: 0}
   weaponName: Sword
   weaponType: 0
-  attackDistance: 1
+  attackDistance: 2
   attackRange: 1.5
   attackRadius: 0.5
   attackDelay: 0.4
   attackSpeed: 1
   attackDamage: 10
-  fireRate: 0
-  firePoint: {fileID: 0}
+  fireRate: 0.5
   attackLayer:
     serializedVersion: 2
     m_Bits: 385
-  audioSource: {fileID: 0}
   hitEffect: {fileID: 0}
-  swordSwing: {fileID: 0}
-  hitSound: {fileID: 0}
   meleeForwardOffset: 1
-  meleeSwingSound: {fileID: 0}
-  meleeHitSound: {fileID: 0}
-  meleeHitEffect: {fileID: 0}
-  attackAnimations: []
+  attackAnimations:
+  - Attack

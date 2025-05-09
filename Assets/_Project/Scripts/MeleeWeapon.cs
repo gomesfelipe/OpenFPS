@@ -8,7 +8,6 @@ public class MeleeWeapon : WeaponBase
     public GameObject hitEffect;
 
     public float meleeForwardOffset = 1f;
-    public GameObject meleeHitEffect;
     public string[] attackAnimations;
 
     private int  attackCount, attackIndex = 0;
@@ -70,11 +69,16 @@ public class MeleeWeapon : WeaponBase
 
     void HitTarget(Vector3 pos)
     {
-        audioSource.pitch = 1;
-        audioSource.PlayOneShot(hitSound);
+        if (audioSource != null) {        
+            audioSource.pitch = 1;
+        audioSource.PlayOneShot(hitSound); 
+        }
 
-        GameObject GO = Instantiate(hitEffect, pos, Quaternion.identity);
-        Destroy(GO, 20);
+        if (hitEffect != null)
+        {
+            GameObject GO = Instantiate(hitEffect, pos, Quaternion.identity);
+            Destroy(GO, 20);
+        }
     }
 
 }

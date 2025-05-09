@@ -9,7 +9,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public float CurrentHealth => currentHealth;
     public event Action<float, float> OnDamageTaken, OnHealthRestored;
-    public event Action OnDeath;
+    public event Action OnDeath, OnBecameZombie;
     void Start()
     {
         playerUI ??= GetComponent<PlayerUI>();
@@ -50,6 +50,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     protected void Death()
     {
         OnDeath?.Invoke();
+        OnBecameZombie?.Invoke();
         Destroy(gameObject);
     }
 }

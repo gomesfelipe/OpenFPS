@@ -15,7 +15,11 @@ public class PlayerUI : MonoBehaviour
     [Header("Ammo")]
     [SerializeField] private GameObject ammoIcon;
     [SerializeField] private TextMeshProUGUI ammoText;
+    [Header("Kills")]
+    [SerializeField] private TextMeshProUGUI killText;
+    [SerializeField] private float punchScale = 1.1f;
 
+    private int killCount = 0;
     protected void Start()
     {
         playerHealth ??= GetComponent<PlayerHealth>();
@@ -65,5 +69,20 @@ public class PlayerUI : MonoBehaviour
 
         if (ammoText != null)
             ammoText.gameObject.SetActive(visible);
+    }
+
+    public void AddKill()
+    {
+        killCount++;
+        UpdateKillText();
+    }
+
+    private void UpdateKillText()
+    {
+        if (killText != null)
+        {
+            killText.text = killCount.ToString("D4"); // 0001, 0002...
+            killText.transform.DOPunchScale(Vector3.one * punchScale, 0.2f, 6, 0.5f);
+        }
     }
 }

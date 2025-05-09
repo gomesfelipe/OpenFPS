@@ -6,7 +6,7 @@ public class WeaponPickUp : MonoBehaviour, IInteractable
     [SerializeField] private WeaponHandler _playerWeapon;
     public void OnInteract()
     {
-        _playerWeapon = FindObjectOfType<WeaponHandler>();
+        _playerWeapon = FindFirstObjectByType<WeaponHandler>();
 
         if (_playerWeapon != null && weaponPrefab != null)
         {
