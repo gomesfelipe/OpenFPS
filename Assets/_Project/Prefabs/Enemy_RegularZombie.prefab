@@ -257,10 +257,20 @@ MonoBehaviour:
   enemyCharacter: {fileID: 426446509449750525}
   enemyHealth: {fileID: 1193853516088973461}
   target: {fileID: 0}
+  detectionRadius: 20
+  playerMask:
+    serializedVersion: 2
+    m_Bits: 64
+  playerTag: Player
   attackRange: 1
   attackCooldown: 1.5
   lostTargetTimeout: 5
   attackDamage: 10
+  patrolMode: 2
+  patrolPoints: []
+  patrolPointRadius: 1.5
+  randomPatrolRadius: 5
+  idleTimeAtPoint: 2
 --- !u!114 &426446509449750525
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -278,8 +288,8 @@ MonoBehaviour:
   airAcceleration: 50
   maxAirSpeed: 5
   gravity: -90
-  baseSpeed: 1
-  boostedSpeed: 7
+  baseSpeed: 0.5
+  boostedSpeed: 1
   chaseBoostRange: 3
   visionRange: 10
   visionAngle: 80
