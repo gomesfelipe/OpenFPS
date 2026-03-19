@@ -6,6 +6,11 @@ public class WeaponHandler : MonoBehaviour
     private bool _requestedAttack, _requestedSustainedAttack, _requestedReload;
 
     public event System.Action<WeaponBase> OnWeaponEquipped, OnWeaponUnequipped;
+    private void Awake()
+    {
+        weaponHolder ??= transform;
+    }
+
     private void Start()
     {
         if (startingWeapon != null)
@@ -15,18 +20,38 @@ public class WeaponHandler : MonoBehaviour
     }
     public void Initialize()
     {
-    
+        weaponHolder ??= transform;
     }
+
     public void EquipWeapon(WeaponBase weapon)
     {
+        if (weapon == null)
+        {
+            Debug.LogWarning("Tried to equip a null weapon.", this);
+            return;
+        }
+
+        weaponHolder ??= transform;
+
+        var weaponRoot = GetWeaponRootTransform(weapon);
+
         if (_currentWeapon != null)
-            Destroy(_currentWeapon.gameObject);
-            _currentWeapon = weapon;
-            _currentWeapon.transform.SetParent(weaponHolder, false);
-            _currentWeapon.transform.localPosition = Vector3.zero;
-            _currentWeapon.transform.localRotation = Quaternion.identity;
-            _currentWeapon.SetOwner(this);
-            OnWeaponEquipped?.Invoke(_currentWeapon);
+        {
+            OnWeaponUnequipped?.Invoke(_currentWeapon);
+            Destroy(GetWeaponRootTransform(_currentWeapon).gameObject);
+        }
+
+        _currentWeapon = weapon;
+
+        if (weaponRoot.parent != weaponHolder)
+        {
+            weaponRoot.SetParent(weaponHolder, false);
+        }
+
+        weaponRoot.localPosition = Vector3.zero;
+        weaponRoot.localRotation = Quaternion.identity;
+        _currentWeapon.SetOwner(this);
+        OnWeaponEquipped?.Invoke(_currentWeapon);
     }
     public void UpdateInput(CharacterInput input)
     {
@@ -54,6 +79,18 @@ public class WeaponHandler : MonoBehaviour
     public void Reload()
     {
         _currentWeapon?.Reload();
+    }
+
+    private Transform GetWeaponRootTransform(WeaponBase weapon)
+    {
+        var current = weapon.transform;
+
+        while (current.parent != null && current.parent != weaponHolder)
+        {
+            current = current.parent;
+        }
+
+        return current;
     }
     
 }
