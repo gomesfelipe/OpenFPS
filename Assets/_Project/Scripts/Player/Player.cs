@@ -70,12 +70,17 @@ public class Player : MonoBehaviour
         var input = _inputActions.Player;
         var deltaTime = Time.deltaTime;
         //Get camera input and update it's rotation.
-        var cameraInput = new CameraInput { Look = input.Look.ReadValue<Vector2>() };
+        var lookControl = input.Look.activeControl;
+        var cameraInput = new CameraInput
+        {
+            Look = input.Look.ReadValue<Vector2>(),
+            UseDeltaTime = lookControl != null && lookControl.device is not Mouse
+        };
         playerCamera.UpdateRotation(cameraInput);
         //Get character input and update it.
         var characterInput = new CharacterInput
         {
-            Rotation = playerCamera.transform.rotation,
+            Rotation = playerCamera.GetRotation(),
             Move = input.Move.ReadValue<Vector2>(),
             Jump = input.Jump.WasPerformedThisFrame(),
             JumpSustain = input.Jump.IsPressed(),

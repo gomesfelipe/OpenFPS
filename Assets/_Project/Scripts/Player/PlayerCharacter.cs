@@ -60,12 +60,14 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     private bool _ungroundedDueToJump;
     private Collider[] _uncrouchOverlapResults;
     private bool _isInitialized;
+    private float _currentCameraTargetHeight;
 
     private void Awake()
     {
         motor ??= GetComponent<KinematicCharacterMotor>();
         _anim ??= GetComponentInChildren<Animator>();
         root ??= transform;
+        _currentCameraTargetHeight = standHeight * standCameraTargetHeight;
 
         if (motor != null)
         {
@@ -86,6 +88,7 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
         _lastState = _state;
         root ??= transform;
         _uncrouchOverlapResults ??= new Collider[8];
+        _currentCameraTargetHeight = standHeight * standCameraTargetHeight;
 
         if (motor != null)
         {
@@ -97,14 +100,17 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     public void UpdateBody(float deltaTime)
     {
         var currentHeight = motor.Capsule.height;
-        var normalizedHeight = currentHeight / standHeight;
-        var cameraTargetHeight = currentHeight *
+        var targetCameraTargetHeight = currentHeight *
             (
             _state.Stance is Stance.Stand
             ? standCameraTargetHeight
             : crouchCameraTargetHeight
             );
-        cameraTarget.position = transform.position + transform.up * cameraTargetHeight;
+        _currentCameraTargetHeight = Mathf.Lerp(
+            _currentCameraTargetHeight,
+            targetCameraTargetHeight,
+            1f - Mathf.Exp(-crouchHeightResponse * deltaTime));
+        cameraTarget.position = transform.position + transform.up * _currentCameraTargetHeight;
 
         // Updating the model Animator
         if (_anim != null)
