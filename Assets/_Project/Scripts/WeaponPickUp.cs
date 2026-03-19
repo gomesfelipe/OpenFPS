@@ -7,9 +7,7 @@ public class WeaponPickUp : MonoBehaviour, IInteractable
     [SerializeField] private WeaponHandler _playerWeapon;
     [SerializeField] private InteractableOutlineTarget outlineTarget;
     [Header("Animation")]
-    [SerializeField] private float floatHeight = 0.2f;
-    [SerializeField] private float floatDuration = 1.2f;
-    [SerializeField] private float rotationDuration = 3f;
+    [SerializeField] private float floatHeight = 0.2f, floatDuration = 1.2f, rotationDuration = 3f;
     [SerializeField] private Vector3 rotationAxis = Vector3.up;
 
     private Vector3 _initialLocalPosition;

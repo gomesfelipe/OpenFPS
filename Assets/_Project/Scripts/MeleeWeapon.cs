@@ -6,6 +6,8 @@ public class MeleeWeapon : WeaponBase
     [Header("Melee Settings")]
     private Camera cam;
     public GameObject hitEffect;
+    [SerializeField] private bool useOwnerCharacterAnimator = true;
+    [SerializeField] private string attackTriggerName = "Attack";
 
     public float meleeForwardOffset = 1f;
     public string[] attackAnimations;
@@ -15,8 +17,14 @@ public class MeleeWeapon : WeaponBase
     protected override void Start()
     {
         base.Start();
-        cam = Camera.main;
+        ResolveAttackCamera();
         weaponType = WeaponType.Melee;
+    }
+
+    public override void SetOwner(WeaponHandler character)
+    {
+        base.SetOwner(character);
+        ResolveAttackCamera();
     }
 
     public override void Fire()
@@ -35,11 +43,30 @@ public class MeleeWeapon : WeaponBase
             audioSource.PlayOneShot(attackSound);
         }
 
-        if (_anim && attackAnimations.Length > 0)
+        PlayAttackAnimation();
+    }
+
+    private void PlayAttackAnimation()
+    {
+        if (useOwnerCharacterAnimator && ownerAnimator != null && !string.IsNullOrWhiteSpace(attackTriggerName))
+        {
+            ownerAnimator.ResetTrigger(attackTriggerName);
+            ownerAnimator.SetTrigger(attackTriggerName);
+            return;
+        }
+
+        if (_anim && attackAnimations != null && attackAnimations.Length > 0)
         {
             string anim = attackAnimations[attackIndex];
             _anim.CrossFadeInFixedTime(anim, 0.2f);
             attackIndex = (attackIndex + 1) % attackAnimations.Length;
+            return;
+        }
+
+        if (_anim != null && !string.IsNullOrWhiteSpace(attackTriggerName))
+        {
+            _anim.ResetTrigger(attackTriggerName);
+            _anim.SetTrigger(attackTriggerName);
         }
     }
 
@@ -56,6 +83,17 @@ public class MeleeWeapon : WeaponBase
 
     void AttackRaycast()
     {
+        if (cam == null)
+        {
+            ResolveAttackCamera();
+        }
+
+        if (cam == null)
+        {
+            Debug.LogWarning("Melee attack failed because no camera was resolved for the weapon.", this);
+            return;
+        }
+
         if(Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, attackDistance, attackLayer))
         { 
             HitTarget(hit.point);
@@ -79,6 +117,11 @@ public class MeleeWeapon : WeaponBase
             GameObject GO = Instantiate(hitEffect, pos, Quaternion.identity);
             Destroy(GO, 20);
         }
+    }
+
+    private void ResolveAttackCamera()
+    {
+        cam = ownerCamera != null ? ownerCamera : Camera.main;
     }
 
 }

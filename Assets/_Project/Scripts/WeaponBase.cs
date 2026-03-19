@@ -25,6 +25,8 @@ public abstract class WeaponBase : MonoBehaviour, IWeapon
     protected bool attacking = false,  readyToAttack = true;
     public LayerMask attackLayer;
     protected WeaponHandler owner;
+    protected Animator ownerAnimator;
+    protected Camera ownerCamera;
 
     public virtual bool CanFire => Time.time - lastShotTime >= fireRate;
 
@@ -37,5 +39,9 @@ public abstract class WeaponBase : MonoBehaviour, IWeapon
     public virtual void SetOwner(WeaponHandler character)
     {
         owner = character;
+        ownerAnimator = character != null ? character.GetCharacterAnimator() : null;
+        ownerCamera = character != null ? character.GetOwnerCamera() : null;
+        _anim ??= GetComponentInChildren<Animator>(true);
+        audioSource ??= GetComponentInChildren<AudioSource>(true);
     }
 }

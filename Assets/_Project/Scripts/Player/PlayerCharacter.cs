@@ -64,6 +64,7 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     private void Awake()
     {
         motor ??= GetComponent<KinematicCharacterMotor>();
+        _anim ??= GetComponentInChildren<Animator>();
         root ??= transform;
 
         if (motor != null)
@@ -80,6 +81,7 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
         }
 
         motor ??= GetComponent<KinematicCharacterMotor>();
+        _anim ??= GetComponentInChildren<Animator>();
         _state.Stance = Stance.Stand;
         _lastState = _state;
         root ??= transform;
@@ -471,6 +473,7 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     }
 
     public Transform GetCameraTarget() => cameraTarget;
+    public Animator GetAnimator() => _anim;
     public CharacterState GetState() => _state;
     public CharacterState GetLastState() => _lastState;
     public Vector3 GetRequestedMovement() => _requestedMovement;
