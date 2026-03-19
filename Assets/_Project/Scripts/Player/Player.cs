@@ -9,6 +9,7 @@ public class Player : MonoBehaviour
     private const string GamepadBindingGroup = "Gamepad";
     private const string JoystickBindingGroup = "Joystick";
     private const string XrBindingGroup = "XR";
+    private const float MoveDeadzone = 0.15f;
 
     [SerializeField] private PlayerCharacter playerCharacter;
     [SerializeField] private PlayerCamera playerCamera;
@@ -69,6 +70,12 @@ public class Player : MonoBehaviour
     {
         var input = _inputActions.Player;
         var deltaTime = Time.deltaTime;
+        var moveInput = input.Move.ReadValue<Vector2>();
+        if (moveInput.sqrMagnitude < MoveDeadzone * MoveDeadzone)
+        {
+            moveInput = Vector2.zero;
+        }
+
         //Get camera input and update it's rotation.
         var lookControl = input.Look.activeControl;
         var cameraInput = new CameraInput
@@ -81,15 +88,22 @@ public class Player : MonoBehaviour
         var characterInput = new CharacterInput
         {
             Rotation = playerCamera.GetRotation(),
-            Move = input.Move.ReadValue<Vector2>(),
+            Move = moveInput,
             Jump = input.Jump.WasPerformedThisFrame(),
             JumpSustain = input.Jump.IsPressed(),
             Crouch = input.Crouch.WasPerformedThisFrame() ? CrouchInput.Toggle : CrouchInput.None,
             Interact = input.Interact.WasPerformedThisFrame(),
             Attack = input.Attack.WasPerformedThisFrame(),
             AttackSustain = input.Attack.IsPressed(),
-            Reload = input.Reload.WasPerformedThisFrame()
+            Reload = input.Reload.WasPerformedThisFrame(),
+            Aim = ReadAimInput() && weaponHandler != null && weaponHandler.CanAim
         };
+        int requestedQuickSlot = ReadQuickSlotInput();
+        if (requestedQuickSlot >= 0)
+        {
+            weaponHandler?.SelectSlot(requestedQuickSlot);
+        }
+        playerCamera.SetAiming(characterInput.Aim);
         playerCharacter.UpdateInput(characterInput);
         playerCharacter.UpdateBody(deltaTime);
         playerInteraction.UpdateInput(characterInput);
@@ -270,5 +284,43 @@ public class Player : MonoBehaviour
         }
 
         return false;
+    }
+
+    private static bool ReadAimInput()
+    {
+        bool mouseAim = Mouse.current?.rightButton.isPressed ?? false;
+        bool gamepadAim = (Gamepad.current?.leftTrigger.ReadValue() ?? 0f) > 0.5f;
+        return mouseAim || gamepadAim;
+    }
+
+    private static int ReadQuickSlotInput()
+    {
+        var keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return -1;
+        }
+
+        if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame)
+        {
+            return 0;
+        }
+
+        if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame)
+        {
+            return 1;
+        }
+
+        if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame)
+        {
+            return 2;
+        }
+
+        if (keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame)
+        {
+            return 3;
+        }
+
+        return -1;
     }
 }

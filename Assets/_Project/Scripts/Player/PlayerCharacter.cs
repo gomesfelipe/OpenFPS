@@ -1,5 +1,6 @@
 using KinematicCharacterController;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
 public enum CrouchInput
 {
@@ -26,6 +27,7 @@ public struct CharacterInput
     public CrouchInput Crouch;
     public bool Attack, AttackSustain;
     public bool Reload;
+    public bool Aim;
 }
 
 [RequireComponent(typeof(KinematicCharacterMotor))]
@@ -51,16 +53,34 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     [SerializeField] private float standHeight = 2f, crouchHeight = 1f;
     [SerializeField, Range(0f,1f)] private float standCameraTargetHeight = 0.9f, crouchCameraTargetHeight = 0.7f;
     [SerializeField] private float crouchHeightResponse = 15f;
+    [Header("Aim Rig")]
+    [SerializeField] private bool enableAimRig = true;
+    [SerializeField] private float aimRigDistance = 12f;
+    [SerializeField] private float aimRigWeightResponse = 12f;
+    [SerializeField, Range(0f, 1f)] private float upperChestAimWeight = 0.8f;
+    [SerializeField, Range(0f, 1f)] private float headAimWeight = 0.35f;
+    [SerializeField] private string aimRigName = "Rig 1";
+    [SerializeField] private string manualChestAimConstraintName = "ChestAim";
+    [SerializeField] private string manualAimTargetName = "aimtarget";
     private CharacterState _state, _lastState, _tempState;
     [Space]
     private Quaternion _requestedRotation;
     private Vector3 _requestedMovement;
     private bool _requestedJump, _requestedCrouch, _requestedSustainedJump, _requestedCrouchInAir;
+    private bool _requestedAim;
     private float _timeSinceUngrounded, _timeSinceJumpRequest;
     private bool _ungroundedDueToJump;
     private Collider[] _uncrouchOverlapResults;
     private bool _isInitialized;
     private float _currentCameraTargetHeight;
+    private bool _hasIsAimingParameter;
+    private PlayerCamera _playerCamera;
+    private WeaponHandler _weaponHandler;
+    private RigBuilder _rigBuilder;
+    private Rig _aimRig;
+    private Transform _aimRigTarget;
+    private MultiAimConstraint _upperChestAimConstraint;
+    private MultiAimConstraint _headAimConstraint;
 
     private void Awake()
     {
@@ -89,6 +109,14 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
         root ??= transform;
         _uncrouchOverlapResults ??= new Collider[8];
         _currentCameraTargetHeight = standHeight * standCameraTargetHeight;
+        _hasIsAimingParameter = AnimatorHasParameter(_anim, "IsAiming");
+        _playerCamera ??= GetComponentInChildren<PlayerCamera>(true);
+        _weaponHandler ??= GetComponent<WeaponHandler>();
+
+        if (enableAimRig)
+        {
+            EnsureAimRig();
+        }
 
         if (motor != null)
         {
@@ -118,7 +146,14 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
             _anim.SetBool("IsGrounded", _state.Grounded);
             _anim.SetBool("IsCrouching", _state.Stance is Stance.Crouch);
             _anim.SetFloat("Speed", new Vector3(_state.velocity.x, 0f, _state.velocity.z).magnitude);
+
+            if (_hasIsAimingParameter)
+            {
+                _anim.SetBool("IsAiming", _requestedAim);
+            }
         }
+
+        UpdateAimRig(deltaTime);
 
     }
     public void UpdateInput(CharacterInput input)
@@ -151,6 +186,8 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
         else if(!_requestedCrouch && wasRequestingCrouch){
             _requestedCrouch = false;
         }
+
+        _requestedAim = input.Aim;
     }
 
     public void UpdateVelocity(ref Vector3 currentVelocity, float deltaTime)
@@ -490,6 +527,283 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
         {
             motor.BaseVelocity = Vector3.zero;
         }
+    }
+
+    private static bool AnimatorHasParameter(Animator animator, string parameterName)
+    {
+        if (animator == null || string.IsNullOrWhiteSpace(parameterName))
+        {
+            return false;
+        }
+
+        foreach (var parameter in animator.parameters)
+        {
+            if (parameter.name == parameterName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void EnsureAimRig()
+    {
+        if (_anim == null)
+        {
+            return;
+        }
+
+        _rigBuilder ??= _anim.GetComponent<RigBuilder>();
+        if (_rigBuilder == null)
+        {
+            _rigBuilder = _anim.gameObject.AddComponent<RigBuilder>();
+        }
+
+        _aimRig ??= FindOrCreateAimRig();
+        _aimRigTarget ??= FindOrCreateAimRigTarget();
+
+        if (_aimRig == null || _aimRigTarget == null)
+        {
+            return;
+        }
+
+        var upperChest = ResolveAimBone(HumanBodyBones.UpperChest, HumanBodyBones.Chest, HumanBodyBones.Spine);
+        var head = ResolveAimBone(HumanBodyBones.Head, HumanBodyBones.Neck);
+
+        if (upperChest != null)
+        {
+            _upperChestAimConstraint = FindOrCreateMultiAimConstraint("UpperChest Aim", upperChest, upperChestAimWeight);
+        }
+
+        if (head != null)
+        {
+            _headAimConstraint = FindOrCreateMultiAimConstraint("Head Aim", head, headAimWeight);
+        }
+
+        RebuildRigGraph();
+    }
+
+    private void UpdateAimRig(float deltaTime)
+    {
+        if (!enableAimRig || _aimRig == null)
+        {
+            return;
+        }
+
+        UpdateAimRigTargetTransform();
+
+        bool shouldAim = _requestedAim && _weaponHandler != null && _weaponHandler.CanAim;
+        float targetWeight = shouldAim ? 1f : 0f;
+        float blend = 1f - Mathf.Exp(-aimRigWeightResponse * deltaTime);
+        _aimRig.weight = Mathf.Lerp(_aimRig.weight, targetWeight, blend);
+    }
+
+    public void AnimationEvent_AttackHit()
+    {
+        _weaponHandler ??= GetComponent<WeaponHandler>();
+        _weaponHandler?.HandleAttackHitAnimationEvent();
+    }
+
+    public void AnimationEvent_AttackRecover()
+    {
+        _weaponHandler ??= GetComponent<WeaponHandler>();
+        _weaponHandler?.HandleAttackRecoveryAnimationEvent();
+    }
+
+    private Rig FindOrCreateAimRig()
+    {
+        var rigs = GetComponentsInChildren<Rig>(true);
+        for (int index = 0; index < rigs.Length; index++)
+        {
+            if (rigs[index] != null && rigs[index].name == aimRigName)
+            {
+                rigs[index].weight = 0f;
+                return rigs[index];
+            }
+        }
+
+        var rigObject = new GameObject("Aim Rig");
+        var rigTransform = rigObject.transform;
+        rigTransform.SetParent(root != null ? root : _anim.transform, false);
+        var rig = rigObject.AddComponent<Rig>();
+        rig.weight = 0f;
+        return rig;
+    }
+
+    private Transform FindOrCreateAimRigTarget()
+    {
+        _playerCamera ??= GetComponentInChildren<PlayerCamera>(true);
+        if (_playerCamera == null)
+        {
+            return null;
+        }
+
+        var existingTarget = FindNamedChildTransform(manualAimTargetName);
+        existingTarget ??= FindNamedChildTransform("Aim Rig Target");
+        if (existingTarget != null)
+        {
+            UpdateAimRigTargetTransform(existingTarget);
+            return existingTarget;
+        }
+
+        var targetObject = new GameObject("Aim Rig Target");
+        var targetTransform = targetObject.transform;
+        targetTransform.SetParent(_playerCamera.transform, false);
+        UpdateAimRigTargetTransform(targetTransform);
+        return targetTransform;
+    }
+
+    private Transform ResolveAimBone(params HumanBodyBones[] candidates)
+    {
+        if (_anim == null || !_anim.isHuman)
+        {
+            return null;
+        }
+
+        for (int index = 0; index < candidates.Length; index++)
+        {
+            var bone = _anim.GetBoneTransform(candidates[index]);
+            if (bone != null)
+            {
+                return bone;
+            }
+        }
+
+        return null;
+    }
+
+    private MultiAimConstraint FindOrCreateMultiAimConstraint(string constraintName, Transform constrainedObject, float constraintWeight)
+    {
+        var constraintTransform = _aimRig.transform.Find(manualChestAimConstraintName);
+        if (constraintTransform == null)
+        {
+            constraintTransform = _aimRig.transform.Find(constraintName);
+        }
+        if (constraintTransform == null)
+        {
+            var constraintObject = new GameObject(constraintName);
+            constraintTransform = constraintObject.transform;
+            constraintTransform.SetParent(_aimRig.transform, false);
+        }
+
+        var constraint = constraintTransform.GetComponent<MultiAimConstraint>();
+        bool createdConstraint = false;
+        if (constraint == null)
+        {
+            constraint = constraintTransform.gameObject.AddComponent<MultiAimConstraint>();
+            constraint.Reset();
+            createdConstraint = true;
+        }
+
+        constraint.weight = constraintWeight;
+
+        if (createdConstraint || !constraint.IsValid())
+        {
+            ref var data = ref constraint.data;
+            data.constrainedObject = constrainedObject;
+            var sourceObjects = new WeightedTransformArray(1);
+            sourceObjects.Add(new WeightedTransform(_aimRigTarget, 1f));
+            data.sourceObjects = sourceObjects;
+            data.maintainOffset = true;
+            data.offset = Vector3.zero;
+            data.aimAxis = MultiAimConstraintData.Axis.Z;
+            data.upAxis = MultiAimConstraintData.Axis.Y;
+            data.worldUpType = MultiAimConstraintData.WorldUpType.SceneUp;
+            data.worldUpAxis = MultiAimConstraintData.Axis.Y;
+            data.worldUpObject = null;
+            data.constrainedXAxis = true;
+            data.constrainedYAxis = true;
+            data.constrainedZAxis = true;
+            data.limits = new Vector2(-180f, 180f);
+        }
+
+        return constraint;
+    }
+
+    private Transform FindNamedChildTransform(string transformName)
+    {
+        if (string.IsNullOrWhiteSpace(transformName))
+        {
+            return null;
+        }
+
+        var transforms = GetComponentsInChildren<Transform>(true);
+        for (int index = 0; index < transforms.Length; index++)
+        {
+            if (transforms[index] != null && transforms[index].name == transformName)
+            {
+                return transforms[index];
+            }
+        }
+
+        return null;
+    }
+
+    private void UpdateAimRigTargetTransform()
+    {
+        UpdateAimRigTargetTransform(_aimRigTarget);
+    }
+
+    private void UpdateAimRigTargetTransform(Transform targetTransform)
+    {
+        if (targetTransform == null)
+        {
+            return;
+        }
+
+        _playerCamera ??= GetComponentInChildren<PlayerCamera>(true);
+        if (_playerCamera == null)
+        {
+            return;
+        }
+
+        var cameraTransform = _playerCamera.transform;
+        if (targetTransform.parent == cameraTransform)
+        {
+            targetTransform.localPosition = new Vector3(0f, 0f, aimRigDistance);
+            targetTransform.localRotation = Quaternion.identity;
+            return;
+        }
+
+        targetTransform.position = cameraTransform.position + cameraTransform.forward * aimRigDistance;
+        targetTransform.rotation = cameraTransform.rotation;
+    }
+
+    private void RebuildRigGraph()
+    {
+        if (_rigBuilder == null || _aimRig == null)
+        {
+            return;
+        }
+
+        bool hasConstraints = (_upperChestAimConstraint != null && _upperChestAimConstraint.IsValid()) ||
+            (_headAimConstraint != null && _headAimConstraint.IsValid());
+        if (!hasConstraints)
+        {
+            return;
+        }
+
+        _rigBuilder.Clear();
+
+        var layers = _rigBuilder.layers;
+        bool hasAimRigLayer = false;
+        for (int index = 0; index < layers.Count; index++)
+        {
+            if (layers[index] != null && layers[index].rig == _aimRig)
+            {
+                hasAimRigLayer = true;
+                layers[index].active = true;
+                break;
+            }
+        }
+
+        if (!hasAimRigLayer)
+        {
+            layers.Add(new RigLayer(_aimRig));
+        }
+
+        _rigBuilder.Build();
     }
 
 

@@ -8,6 +8,7 @@ public struct CameraInput
 public class PlayerCamera : MonoBehaviour
 {
     [SerializeField] private Transform target;
+    [SerializeField] private Camera targetCamera;
 
     [Header("Look")]
     [SerializeField] private float mouseSensitivity = 0.1f;
@@ -18,21 +19,33 @@ public class PlayerCamera : MonoBehaviour
     [Header("Follow")]
     [SerializeField] private bool smoothPosition = false;
     [SerializeField] private float positionSharpness = 28f;
+    [Header("Aim")]
+    [SerializeField] private float defaultFieldOfView = 60f;
+    [SerializeField] private float aimingFieldOfView = 42f;
+    [SerializeField] private float aimingSharpness = 14f;
 
     private float _yaw;
     private float _pitch;
     private Quaternion _currentRotation;
     private Vector3 _currentPosition;
+    private bool _isAiming;
 
     public void Initialize(Transform target)
     {
         this.target = target;
+        targetCamera ??= GetComponent<Camera>();
+        targetCamera ??= GetComponentInChildren<Camera>();
 
         var eulerAngles = transform.eulerAngles;
         _yaw = eulerAngles.y;
         _pitch = NormalizePitch(eulerAngles.x);
         _currentRotation = Quaternion.Euler(_pitch, _yaw, 0f);
         _currentPosition = target != null ? target.position : transform.position;
+
+        if (targetCamera != null)
+        {
+            defaultFieldOfView = targetCamera.fieldOfView;
+        }
 
         transform.SetPositionAndRotation(_currentPosition, _currentRotation);
     }
@@ -50,6 +63,11 @@ public class PlayerCamera : MonoBehaviour
     public void UpdatePosition(Transform target)
     {
         this.target = target;
+    }
+
+    public void SetAiming(bool isAiming)
+    {
+        _isAiming = isAiming;
     }
 
     public Quaternion GetRotation() => Quaternion.Euler(_pitch, _yaw, 0f);
@@ -78,6 +96,13 @@ public class PlayerCamera : MonoBehaviour
         }
 
         transform.SetPositionAndRotation(_currentPosition, _currentRotation);
+
+        if (targetCamera != null)
+        {
+            float targetFieldOfView = _isAiming ? aimingFieldOfView : defaultFieldOfView;
+            float fovT = 1f - Mathf.Exp(-aimingSharpness * Time.deltaTime);
+            targetCamera.fieldOfView = Mathf.Lerp(targetCamera.fieldOfView, targetFieldOfView, fovT);
+        }
     }
 
     private static float NormalizePitch(float angle)

@@ -13,6 +13,8 @@ public class MeleeWeapon : WeaponBase
     public string[] attackAnimations;
 
     private int  attackCount, attackIndex = 0;
+    private bool _attackHitResolved;
+    private bool _attackRecoveryResolved;
 
     protected override void Start()
     {
@@ -33,7 +35,11 @@ public class MeleeWeapon : WeaponBase
 
         readyToAttack = false;
         attacking = true;
+        _attackHitResolved = false;
+        _attackRecoveryResolved = false;
 
+        CancelInvoke(nameof(ResetAttack));
+        CancelInvoke(nameof(AttackRaycast));
         Invoke(nameof(ResetAttack), attackSpeed);
         Invoke(nameof(AttackRaycast), attackDelay);
 
@@ -44,6 +50,30 @@ public class MeleeWeapon : WeaponBase
         }
 
         PlayAttackAnimation();
+    }
+
+    public override void OnAttackHitAnimationEvent()
+    {
+        if (!attacking || _attackHitResolved)
+        {
+            return;
+        }
+
+        _attackHitResolved = true;
+        CancelInvoke(nameof(AttackRaycast));
+        AttackRaycast();
+    }
+
+    public override void OnAttackRecoveryAnimationEvent()
+    {
+        if (!attacking || _attackRecoveryResolved)
+        {
+            return;
+        }
+
+        _attackRecoveryResolved = true;
+        CancelInvoke(nameof(ResetAttack));
+        ResetAttack();
     }
 
     private void PlayAttackAnimation()
@@ -77,12 +107,15 @@ public class MeleeWeapon : WeaponBase
 
     void ResetAttack()
     {
+        _attackRecoveryResolved = true;
         attacking = false;
         readyToAttack = true;
     }
 
     void AttackRaycast()
     {
+        _attackHitResolved = true;
+
         if (cam == null)
         {
             ResolveAttackCamera();
