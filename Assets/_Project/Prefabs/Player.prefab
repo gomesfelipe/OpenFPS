@@ -901,6 +901,8 @@ MonoBehaviour:
   weaponHolder: {fileID: 5201016041039679137}
   startingWeapon: {fileID: 0}
   _currentWeapon: {fileID: 0}
+  playerCharacter: {fileID: 0}
+  playerCamera: {fileID: 0}
 --- !u!114 &1476946999286478075
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -914,6 +916,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerCamera: {fileID: 8509515463513647875}
+  playerUI: {fileID: 4236811876047940922}
   interactDistance: 2.5
   interactRadius: 0.3
   interactableLayerMask:
@@ -957,6 +960,29 @@ MonoBehaviour:
   ammoText: {fileID: 0}
   killText: {fileID: 0}
   punchScale: 1.1
+  interactionPromptRoot: {fileID: 0}
+  interactionPromptBindingIcon: {fileID: 0}
+  interactionPromptText: {fileID: 0}
+  interactionPromptFormat: '{0} to {1}'
+  interactionPromptAction: Hold
+  defaultInteractionBinding: E
+  preferSpritePromptIcons: 1
+  useBindingIconMarkup: 1
+  interactionBindingBackgroundColor: {r: 0.95, g: 0.95, b: 0.95, a: 0.95}
+  interactionBindingTextColor: {r: 0.12, g: 0.12, b: 0.12, a: 1}
+  interactionPromptIcons:
+  - bindingGroup: Gamepad
+    controlPath: <Gamepad>/buttonSouth
+    sprite: {fileID: 21300000, guid: 2083eab1d4dbefd429306666c53582bb, type: 3}
+  - bindingGroup: Gamepad
+    controlPath: <Gamepad>/buttonEast
+    sprite: {fileID: 21300000, guid: 4d1d2e55ca147704eba5bf85dc68d12b, type: 3}
+  - bindingGroup: Gamepad
+    controlPath: <Gamepad>/buttonWest
+    sprite: {fileID: 21300000, guid: 3a44ec58b6322ee44b4f28d6cca77eb8, type: 3}
+  - bindingGroup: Gamepad
+    controlPath: <Gamepad>/buttonNorth
+    sprite: {fileID: 21300000, guid: 8796799407ef5624aa0a5cf767c2fcf0, type: 3}
 --- !u!1001 &8528885976783364523
 PrefabInstance:
   m_ObjectHideFlags: 0

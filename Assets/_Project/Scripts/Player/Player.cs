@@ -1,9 +1,15 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
 public class Player : MonoBehaviour
 {
+    private const string KeyboardMouseBindingGroup = "Keyboard&Mouse";
+    private const string GamepadBindingGroup = "Gamepad";
+    private const string JoystickBindingGroup = "Joystick";
+    private const string XrBindingGroup = "XR";
+
     [SerializeField] private PlayerCharacter playerCharacter;
     [SerializeField] private PlayerCamera playerCamera;
     [SerializeField] private PlayerInteraction playerInteraction;
@@ -21,6 +27,7 @@ public class Player : MonoBehaviour
     [SerializeField] private GameObject zombiePrefab;
 
     private PlayerInputActions _inputActions;
+    private string _activeBindingGroup = KeyboardMouseBindingGroup;
 
     void Start()
     {
@@ -36,14 +43,15 @@ public class Player : MonoBehaviour
         cameraLean ??= GetComponentInChildren<CameraLean>();
         cameraLean?.Initialize();
         stanceVignette?.Initialize(volume.profile);
+        playerUI ??= GetComponent<PlayerUI>();
+        playerUI?.Initialize();
+        UpdateInteractionPromptBinding(forceRefresh: true);
         playerInteraction ??= GetComponent<PlayerInteraction>();
-        playerInteraction?.Initialize();
+        playerInteraction?.Initialize(playerUI);
         weaponHandler ??= GetComponent<WeaponHandler>();
         weaponHandler?.Initialize();
         playerHealth ??= GetComponent<PlayerHealth>();
         playerHealth?.Initialize();
-        playerUI ??= GetComponent<PlayerUI>();
-        playerUI?.Initialize();
         if (playerHealth != null && playerUI !=null)
         {
         playerHealth.OnDamageTaken += (amount, current) => playerUI.UpdateHealth(current);
@@ -81,6 +89,7 @@ public class Player : MonoBehaviour
         playerCharacter.UpdateBody(deltaTime);
         playerInteraction.UpdateInput(characterInput);
         weaponHandler.UpdateInput(characterInput);
+        UpdateInteractionPromptBinding();
     }
 
     private void LateUpdate()
@@ -126,5 +135,135 @@ public class Player : MonoBehaviour
     public void Teleport(Vector3 position)
     {
         playerCharacter.SetPosition(position);
+    }
+
+    private void UpdateInteractionPromptBinding(bool forceRefresh = false)
+    {
+        if (_inputActions == null || playerUI == null)
+        {
+            return;
+        }
+
+        var resolvedBindingGroup = ResolveActiveBindingGroup();
+        if (!forceRefresh && resolvedBindingGroup == _activeBindingGroup)
+        {
+            return;
+        }
+
+        _activeBindingGroup = resolvedBindingGroup;
+
+        var bindingLabel = _inputActions.Player.Interact.GetBindingDisplayString(
+            InputBinding.DisplayStringOptions.DontIncludeInteractions,
+            _activeBindingGroup);
+        var bindingPath = ResolveBindingPath(_inputActions.Player.Interact, _activeBindingGroup);
+
+        if (string.IsNullOrWhiteSpace(bindingLabel) && _activeBindingGroup != KeyboardMouseBindingGroup)
+        {
+            bindingLabel = _inputActions.Player.Interact.GetBindingDisplayString(
+                InputBinding.DisplayStringOptions.DontIncludeInteractions,
+                KeyboardMouseBindingGroup);
+            bindingPath = ResolveBindingPath(_inputActions.Player.Interact, KeyboardMouseBindingGroup);
+        }
+
+        playerUI.SetInteractionBindingLabel(bindingLabel, _activeBindingGroup, bindingPath);
+    }
+
+    private string ResolveActiveBindingGroup()
+    {
+        var playerActions = _inputActions.Player;
+
+        if (TryResolveBindingGroup(playerActions.Interact.activeControl, out var bindingGroup) ||
+            TryResolveBindingGroup(playerActions.Attack.activeControl, out bindingGroup) ||
+            TryResolveBindingGroup(playerActions.Reload.activeControl, out bindingGroup) ||
+            TryResolveBindingGroup(playerActions.Crouch.activeControl, out bindingGroup) ||
+            TryResolveBindingGroup(playerActions.Jump.activeControl, out bindingGroup) ||
+            TryResolveBindingGroup(playerActions.Move.activeControl, out bindingGroup) ||
+            TryResolveBindingGroup(playerActions.Look.activeControl, out bindingGroup))
+        {
+            return bindingGroup;
+        }
+
+        return _activeBindingGroup;
+    }
+
+    private static bool TryResolveBindingGroup(InputControl control, out string bindingGroup)
+    {
+        if (control == null)
+        {
+            bindingGroup = null;
+            return false;
+        }
+
+        var device = control.device;
+        if (device is Gamepad)
+        {
+            bindingGroup = GamepadBindingGroup;
+            return true;
+        }
+
+        if (device is Joystick)
+        {
+            bindingGroup = JoystickBindingGroup;
+            return true;
+        }
+
+        if (device is Keyboard || device is Mouse)
+        {
+            bindingGroup = KeyboardMouseBindingGroup;
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(device.layout) &&
+            device.layout.IndexOf("XR", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            bindingGroup = XrBindingGroup;
+            return true;
+        }
+
+        bindingGroup = null;
+        return false;
+    }
+
+    private static string ResolveBindingPath(InputAction action, string bindingGroup)
+    {
+        var bindings = action.bindings;
+        for (int index = 0; index < bindings.Count; index++)
+        {
+            var binding = bindings[index];
+            if (binding.isComposite || binding.isPartOfComposite)
+            {
+                continue;
+            }
+
+            if (!BindingBelongsToGroup(binding.groups, bindingGroup))
+            {
+                continue;
+            }
+
+            return string.IsNullOrWhiteSpace(binding.effectivePath)
+                ? binding.path
+                : binding.effectivePath;
+        }
+
+        return null;
+    }
+
+    private static bool BindingBelongsToGroup(string bindingGroups, string targetGroup)
+    {
+        if (string.IsNullOrWhiteSpace(bindingGroups) || string.IsNullOrWhiteSpace(targetGroup))
+        {
+            return false;
+        }
+
+        var groups = bindingGroups.Split(';');
+        for (int index = 0; index < groups.Length; index++)
+        {
+            if (string.Equals(groups[index], targetGroup, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

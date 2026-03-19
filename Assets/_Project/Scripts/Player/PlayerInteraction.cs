@@ -2,6 +2,7 @@ using UnityEngine;
 public class PlayerInteraction : MonoBehaviour
 {
     [SerializeField] private PlayerCamera playerCamera;
+    [SerializeField] private PlayerUI playerUI;
     [SerializeField] private float interactDistance = 3f;
     [SerializeField] private float interactRadius = 0.3f;
     [SerializeField] private LayerMask interactableLayerMask = ~0;
@@ -9,9 +10,11 @@ public class PlayerInteraction : MonoBehaviour
     [SerializeField] IInteractable currentInteractable;
     private InteractableOutlineTarget _currentOutlineTarget;
 
-    public void Initialize()
+    public void Initialize(PlayerUI ui = null)
     {
         playerCamera ??= GetComponentInChildren<PlayerCamera>();
+        playerUI = ui != null ? ui : GetComponent<PlayerUI>();
+        playerUI?.HideInteractionPrompt();
     }
 
     public void UpdateInput(CharacterInput input)
@@ -158,6 +161,8 @@ public class PlayerInteraction : MonoBehaviour
         {
             _currentOutlineTarget.SetHighlighted(true);
         }
+
+        playerUI?.ShowInteractionPrompt(GetPromptVerb(newInteractable));
     }
 
     void DisableCurrentInteractable()
@@ -172,6 +177,15 @@ public class PlayerInteraction : MonoBehaviour
         {
             currentInteractable = null;
         }
+
+        playerUI?.HideInteractionPrompt();
         _isInteracting = false;
-    }        
+    }
+
+    private static string GetPromptVerb(IInteractable interactable)
+    {
+        return interactable is IInteractionPromptProvider promptProvider
+            ? promptProvider.GetInteractionPromptVerb()
+            : "interact";
+    }
 }

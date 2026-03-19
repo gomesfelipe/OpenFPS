@@ -7,3 +7,8 @@ public interface IInteractable
     //bool RequiresHoldToInteract();
     //float HoldDuration();
 }
+
+public interface IInteractionPromptProvider
+{
+    string GetInteractionPromptVerb();
+}

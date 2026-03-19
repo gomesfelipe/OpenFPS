@@ -1,7 +1,7 @@
 using UnityEngine;
 using DG.Tweening;
 
-public class WeaponPickUp : MonoBehaviour, IInteractable
+public class WeaponPickUp : MonoBehaviour, IInteractable, IInteractionPromptProvider
 {
     public GameObject weaponPrefab;
     [SerializeField] private WeaponHandler _playerWeapon;
@@ -69,6 +69,8 @@ public class WeaponPickUp : MonoBehaviour, IInteractable
             Debug.LogWarning("Weapon pickup failed because player weapon handler or weapon prefab is missing.", this);
         }
     }
+
+    public string GetInteractionPromptVerb() => "pickup";
 
     private void StartIdleAnimation()
     {
