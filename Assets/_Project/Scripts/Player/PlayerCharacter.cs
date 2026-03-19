@@ -28,6 +28,7 @@ public struct CharacterInput
     public bool Reload;
 }
 
+[RequireComponent(typeof(KinematicCharacterMotor))]
 public class PlayerCharacter : MonoBehaviour, ICharacterController
 {
     [SerializeField] private KinematicCharacterMotor motor;
@@ -58,13 +59,38 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     private float _timeSinceUngrounded, _timeSinceJumpRequest;
     private bool _ungroundedDueToJump;
     private Collider[] _uncrouchOverlapResults;
+    private bool _isInitialized;
+
+    private void Awake()
+    {
+        motor ??= GetComponent<KinematicCharacterMotor>();
+        root ??= transform;
+
+        if (motor != null)
+        {
+            motor.CharacterController = this;
+        }
+    }
+
     public void Initialize()
     {
+        if (_isInitialized)
+        {
+            return;
+        }
+
+        motor ??= GetComponent<KinematicCharacterMotor>();
         _state.Stance = Stance.Stand;
         _lastState = _state;
-        root ??= GetComponentInChildren<Transform>();
-        _uncrouchOverlapResults = new Collider[8];
-        motor.CharacterController = this;
+        root ??= transform;
+        _uncrouchOverlapResults ??= new Collider[8];
+
+        if (motor != null)
+        {
+            motor.CharacterController = this;
+        }
+
+        _isInitialized = true;
     }
     public void UpdateBody(float deltaTime)
     {

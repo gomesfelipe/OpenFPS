@@ -30,12 +30,34 @@ public class EnemyCharacter : MonoBehaviour, ICharacterController
     private Transform _target;
     private Vector3 _requestedMovement;
     private Quaternion _requestedRotation;
+    private bool _isInitialized;
+
+    private void Awake()
+    {
+        motor ??= GetComponent<KinematicCharacterMotor>();
+
+        if (motor != null)
+        {
+            motor.CharacterController = this;
+        }
+    }
 
     public void Initialize()
     {
+        if (_isInitialized)
+        {
+            return;
+        }
+
         motor ??= GetComponent<KinematicCharacterMotor>();
         _anim ??= GetComponentInChildren<Animator>();
-        motor.CharacterController = this;
+
+        if (motor != null)
+        {
+            motor.CharacterController = this;
+        }
+
+        _isInitialized = true;
     }
 
     public void SetTarget(Transform target)
@@ -130,7 +152,7 @@ public class EnemyCharacter : MonoBehaviour, ICharacterController
         {
             _state.Grounded = false;
 
-            // Aéreo
+            // Aï¿½reo
             Vector3 planarCurrent = Vector3.ProjectOnPlane(currentVelocity, motor.CharacterUp);
             Vector3 movementForce = Vector3.ProjectOnPlane(_requestedMovement, motor.CharacterUp) * airAcceleration * deltaTime;
 
