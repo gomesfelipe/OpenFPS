@@ -197,7 +197,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.31
-  m_Height: 1.8
+  m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &692303098329678182
@@ -214,7 +214,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Capsule: {fileID: 543458339512658696}
   CapsuleRadius: 0.31
-  CapsuleHeight: 1.8
+  CapsuleHeight: 2
   CapsuleYOffset: 1
   CapsulePhysicsMaterial: {fileID: 0}
   GroundDetectionExtraDistance: 0
@@ -264,6 +264,8 @@ MonoBehaviour:
   playerTag: Player
   attackRange: 1
   attackCooldown: 1.5
+  arrivalSlowdownDistance: 2
+  attackStopBuffer: 0.35
   lostTargetTimeout: 5
   attackDamage: 10
   patrolMode: 2
@@ -285,6 +287,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _anim: {fileID: 2790442593926066622}
   headTransform: {fileID: 1269464861436520609}
+  groundAcceleration: 12
+  groundDeceleration: 18
+  rotationSharpness: 10
   airAcceleration: 50
   maxAirSpeed: 5
   gravity: -90

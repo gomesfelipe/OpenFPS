@@ -10,6 +10,8 @@ public class Enemy : MonoBehaviour
     [SerializeField] private string playerTag = "Player";
     [SerializeField] private float attackRange = 2f;
     [SerializeField] private float attackCooldown = 1.5f;
+    [SerializeField] private float arrivalSlowdownDistance = 2f;
+    [SerializeField] private float attackStopBuffer = 0.35f;
 
     [SerializeField] private float lostTargetTimeout = 5f;
     private Vector3? lastKnownTargetPosition;
@@ -137,14 +139,30 @@ public class Enemy : MonoBehaviour
     {
         Vector3 planarDirection = destination - transform.position;
         planarDirection.y = 0f;
+        float distance = planarDirection.magnitude;
 
-        Vector2 move = planarDirection.sqrMagnitude > 0.0001f
-            ? new Vector2(planarDirection.x, planarDirection.z).normalized
-            : Vector2.zero;
+        float desiredDistance = 0f;
+        if (allowAttack)
+        {
+            desiredDistance = Mathf.Max(0f, attackRange - attackStopBuffer);
+        }
+        else if (patrolDestination.HasValue)
+        {
+            desiredDistance = patrolPointRadius * 0.5f;
+        }
+
+        float remainingDistance = Mathf.Max(0f, distance - desiredDistance);
+        float moveMagnitude = arrivalSlowdownDistance > 0f
+            ? Mathf.Clamp01(remainingDistance / arrivalSlowdownDistance)
+            : (remainingDistance > 0f ? 1f : 0f);
 
         Vector3 forward = planarDirection.sqrMagnitude > 0.0001f
             ? planarDirection.normalized
             : transform.forward;
+
+        Vector2 move = moveMagnitude > 0f
+            ? new Vector2(0f, moveMagnitude)
+            : Vector2.zero;
 
         return new CharacterInput
         {

@@ -9,6 +9,9 @@ public class EnemyCharacter : MonoBehaviour, ICharacterController
     [SerializeField] private Transform headTransform;
 
     [Header("Movement")]
+    [SerializeField] private float groundAcceleration = 12f;
+    [SerializeField] private float groundDeceleration = 18f;
+    [SerializeField] private float rotationSharpness = 10f;
     [SerializeField] private float airAcceleration = 30f;
     [SerializeField] private float maxAirSpeed = 6f;
     [SerializeField] private float gravity = -90f;
@@ -140,13 +143,15 @@ public class EnemyCharacter : MonoBehaviour, ICharacterController
             float distanceToTarget = _target != null ? Vector3.Distance(transform.position, _target.position) : float.MaxValue;
 
             float t = Mathf.InverseLerp(visionRange, chaseBoostRange, distanceToTarget);
-            float currentSpeed = Mathf.Lerp(baseSpeed, boostedSpeed, 1f - Mathf.Exp(-t * deltaTime));
+            float currentSpeed = Mathf.Lerp(baseSpeed, boostedSpeed, t);
 
             var groundMove = motor.GetDirectionTangentToSurface(_requestedMovement, motor.GroundingStatus.GroundNormal);
             var targetVelocity = groundMove * currentSpeed;
+            var previousVelocity = currentVelocity;
+            float sharpness = groundMove.sqrMagnitude > 0.0001f ? groundAcceleration : groundDeceleration;
 
-            _state.Acceleration = (targetVelocity - currentVelocity) / deltaTime;
-            currentVelocity = targetVelocity;
+            currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, 1f - Mathf.Exp(-sharpness * deltaTime));
+            _state.Acceleration = (currentVelocity - previousVelocity) / deltaTime;
         }
         else
         {
@@ -174,7 +179,8 @@ public class EnemyCharacter : MonoBehaviour, ICharacterController
         var forward = Vector3.ProjectOnPlane(_requestedRotation * Vector3.forward, motor.CharacterUp);
         if (forward != Vector3.zero)
         {
-            currentRotation = Quaternion.LookRotation(forward, motor.CharacterUp);
+            Quaternion targetRotation = Quaternion.LookRotation(forward, motor.CharacterUp);
+            currentRotation = Quaternion.Slerp(currentRotation, targetRotation, 1f - Mathf.Exp(-rotationSharpness * deltaTime));
         }
     }
 
