@@ -9,12 +9,6 @@ public class EnemySpawner : MonoBehaviour
 
     public void SpawnEnemies(int amount)
     {
-        if (enemyPrefab == null || spawnPoints.Length == 0)
-        {
-            Debug.LogWarning("Spawner not configured.");
-            return;
-        }
-
         for (int i = 0; i < amount; i++)
         {
             SpawnEnemy();
@@ -23,7 +17,11 @@ public class EnemySpawner : MonoBehaviour
 
     public void SpawnEnemy()
     {
-        Transform basePoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+        if (!TryGetSpawnPoint(out Transform basePoint))
+        {
+            return;
+        }
+
         Vector2 randomOffset = Random.insideUnitCircle * spawnRadius;
         Vector3 spawnPos = basePoint.position + new Vector3(randomOffset.x, 0, randomOffset.y);
 
@@ -33,5 +31,35 @@ public class EnemySpawner : MonoBehaviour
         {
             motor.SetPositionAndRotation(spawnPos, basePoint.rotation);
         }
+    }
+
+    private bool TryGetSpawnPoint(out Transform basePoint)
+    {
+        basePoint = null;
+
+        if (enemyPrefab == null)
+        {
+            Debug.LogWarning("Spawner has no enemy prefab configured.", this);
+            return false;
+        }
+
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogWarning("Spawner has no spawn points configured.", this);
+            return false;
+        }
+
+        for (int attempt = 0; attempt < spawnPoints.Length; attempt++)
+        {
+            Transform candidate = spawnPoints[Random.Range(0, spawnPoints.Length)];
+            if (candidate != null)
+            {
+                basePoint = candidate;
+                return true;
+            }
+        }
+
+        Debug.LogWarning("Spawner has no valid spawn points assigned.", this);
+        return false;
     }
 }

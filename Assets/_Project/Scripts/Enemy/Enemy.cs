@@ -34,13 +34,18 @@ public class Enemy : MonoBehaviour
     {
         enemyCharacter ??= GetComponent<EnemyCharacter>();
         enemyCharacter.Initialize();
-        enemyHealth??=GetComponent<EnemyHealth>();
+        enemyHealth ??= GetComponent<EnemyHealth>();
         enemyHealth?.Initialize();
         if (TryGetComponent<EnemyHealth>(out var health))
         {
-            health.SetCamera(Camera.main.transform);
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                health.SetCamera(mainCamera.transform);
+            }
         }
     }
+
     private void Update()
     {
         if (target == null)
@@ -54,22 +59,7 @@ public class Enemy : MonoBehaviour
             }
         }
 
-        Vector3 direction = (target.position - transform.position);
-        Vector3 moveDir = new Vector2(direction.x, direction.z).normalized;
-        Quaternion look = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z).normalized);
-
-        var input = new CharacterInput
-        {
-            Move = moveDir,
-            Rotation = look,
-            Attack = Vector3.Distance(transform.position, target.position) <= attackRange
-        };
-
-        enemyCharacter.UpdateInput(input);
-        enemyCharacter.UpdateCharacter(Time.deltaTime);
-
-        if (input.Attack)
-            TryAttack();
+        ChaseTarget();
     }
 
     private void TryFindTarget()
@@ -113,19 +103,13 @@ public class Enemy : MonoBehaviour
 
     private void ChaseTarget()
     {
-        Vector3 dir = target.position - transform.position;
-        Vector2 move = new Vector2(dir.x, dir.z).normalized;
-        Quaternion look = Quaternion.LookRotation(new Vector3(dir.x, 0, dir.z).normalized);
-
-        var input = new CharacterInput
+        if (target == null)
         {
-            Move = move,
-            Rotation = look,
-            Attack = dir.magnitude <= attackRange
-        };
+            return;
+        }
 
-        enemyCharacter.UpdateInput(input);
-        enemyCharacter.UpdateCharacter(Time.deltaTime);
+        CharacterInput input = BuildInput(target.position, true);
+        ApplyInput(input);
 
         if (input.Attack)
         {
@@ -145,17 +129,33 @@ public class Enemy : MonoBehaviour
             patrolDestination = GetNextPatrolPoint();
         }
 
-        Vector3 dir = patrolDestination.Value - transform.position;
-        Vector2 move = new Vector2(dir.x, dir.z).normalized;
-        Quaternion look = Quaternion.LookRotation(new Vector3(dir.x, 0, dir.z).normalized);
+        CharacterInput input = BuildInput(patrolDestination.Value, false);
+        ApplyInput(input);
+    }
 
-        var input = new CharacterInput
+    private CharacterInput BuildInput(Vector3 destination, bool allowAttack)
+    {
+        Vector3 planarDirection = destination - transform.position;
+        planarDirection.y = 0f;
+
+        Vector2 move = planarDirection.sqrMagnitude > 0.0001f
+            ? new Vector2(planarDirection.x, planarDirection.z).normalized
+            : Vector2.zero;
+
+        Vector3 forward = planarDirection.sqrMagnitude > 0.0001f
+            ? planarDirection.normalized
+            : transform.forward;
+
+        return new CharacterInput
         {
             Move = move,
-            Rotation = look,
-            Attack = false
+            Rotation = Quaternion.LookRotation(forward),
+            Attack = allowAttack && planarDirection.sqrMagnitude <= attackRange * attackRange
         };
+    }
 
+    private void ApplyInput(CharacterInput input)
+    {
         enemyCharacter.UpdateInput(input);
         enemyCharacter.UpdateCharacter(Time.deltaTime);
     }

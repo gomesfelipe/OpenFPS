@@ -21,48 +21,60 @@ public class WaveController : MonoBehaviour
 
     private int currentWaveIndex = 0;
     private bool isSpawning = false;
+    private bool isWaveCycleActive = false;
+    private Coroutine waveRoutine;
 
     private void Start()
     {
         if (autoStart)
         {
-            StartCoroutine(StartNextWave());
+            StartWaveManually();
         }
     }
 
     public void StartWaveManually()
     {
-        if (!isSpawning)
+        if (isWaveCycleActive || currentWaveIndex >= waves.Count)
         {
-            StartCoroutine(StartNextWave());
+            return;
         }
+
+        waveRoutine = StartCoroutine(RunWaveSequence());
     }
 
-    private IEnumerator StartNextWave()
+    private IEnumerator RunWaveSequence()
     {
-        if (currentWaveIndex >= waves.Count)
+        isWaveCycleActive = true;
+
+        while (currentWaveIndex < waves.Count)
         {
-            Debug.Log("All waves complete.");
-            yield break;
+            isSpawning = true;
+            var wave = waves[currentWaveIndex];
+            Debug.Log($"Wave {currentWaveIndex + 1}: {wave.waveName}");
+
+            for (int i = 0; i < wave.enemyCount; i++)
+            {
+                if (wave.spawner == null)
+                {
+                    Debug.LogWarning($"Wave '{wave.waveName}' has no spawner assigned.", this);
+                    break;
+                }
+
+                wave.spawner.SpawnEnemy();
+                yield return new WaitForSeconds(wave.spawnInterval);
+            }
+
+            currentWaveIndex++;
+            isSpawning = false;
+
+            if (currentWaveIndex < waves.Count)
+            {
+                yield return new WaitForSeconds(timeBetweenWaves);
+            }
         }
 
-        isSpawning = true;
-        var wave = waves[currentWaveIndex];
-        Debug.Log($"Wave {currentWaveIndex + 1}: {wave.waveName}");
-
-        for (int i = 0; i < wave.enemyCount; i++)
-        {
-            wave.spawner.SpawnEnemy();
-            yield return new WaitForSeconds(wave.spawnInterval);
-        }
-
-        currentWaveIndex++;
-        isSpawning = false;
-
-        if (currentWaveIndex < waves.Count)
-        {
-            yield return new WaitForSeconds(timeBetweenWaves);
-            StartCoroutine(StartNextWave());
-        }
+        isWaveCycleActive = false;
+        waveRoutine = null;
+        Debug.Log("All waves complete.");
     }
 }
