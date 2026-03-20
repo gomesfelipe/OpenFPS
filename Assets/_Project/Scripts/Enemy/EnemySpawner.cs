@@ -1,3 +1,4 @@
+using KinematicCharacterController;
 using UnityEngine;
 
 public class EnemySpawner : MonoBehaviour
@@ -26,6 +27,11 @@ public class EnemySpawner : MonoBehaviour
         Vector2 randomOffset = Random.insideUnitCircle * spawnRadius;
         Vector3 spawnPos = basePoint.position + new Vector3(randomOffset.x, 0, randomOffset.y);
 
-        Instantiate(enemyPrefab, spawnPos, basePoint.rotation);
+        GameObject spawnedEnemy = Instantiate(enemyPrefab, spawnPos, basePoint.rotation);
+
+        if (spawnedEnemy.TryGetComponent<KinematicCharacterMotor>(out var motor))
+        {
+            motor.SetPositionAndRotation(spawnPos, basePoint.rotation);
+        }
     }
 }
