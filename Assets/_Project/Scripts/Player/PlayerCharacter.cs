@@ -42,9 +42,12 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
     [Space]
     [SerializeField] private float airSpeed = 15f, airAcceleration =70f;
     [SerializeField] private float coyoteTime = 0.2f;
+    [SerializeField] private float jumpBufferTime = 0.15f;
     [Space]
     [SerializeField,Range(0,1f)] private float jumpSustainGravity = 0.4f;
     [SerializeField] private float gravity = -90f;
+    [SerializeField] private float fallGravityMultiplier = 1.2f;
+    [SerializeField] private float jumpReleaseGravityMultiplier = 1.5f;
     [Space]
     [SerializeField] private float slideStartSpeed = 25f, slideEndSpeed=15f;
     [SerializeField] private float slideFriction = 0.8f, slideSteerAcceleration = 5f;
@@ -370,8 +373,18 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
             {
                 effectiveGravity *= jumpSustainGravity;
             }
-            currentVelocity += deltaTime * gravity * motor.CharacterUp;
+            else if (verticalSpeed > 0f)
+            {
+                effectiveGravity *= jumpReleaseGravityMultiplier;
+            }
+            else if (verticalSpeed < 0f)
+            {
+                effectiveGravity *= fallGravityMultiplier;
+            }
+
+            currentVelocity += deltaTime * effectiveGravity * motor.CharacterUp;
         }
+
         if (_requestedJump)
         {
             var grounded = motor.GroundingStatus.IsStableOnGround;
@@ -379,6 +392,7 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
             if (grounded || canCoyoteJump) 
             {
                 _requestedJump = false; //Unset jump request
+                _timeSinceJumpRequest = 0f;
                 _requestedCrouch = false; //and request the character uncrouches.
                 _requestedCrouchInAir = false;
                 //Unstick the player from the ground
@@ -393,8 +407,8 @@ public class PlayerCharacter : MonoBehaviour, ICharacterController
             else
             {
                 _timeSinceJumpRequest += deltaTime;
-                //Defer the jump request until coyot time has passed.
-                var canJumpLater = _timeSinceJumpRequest < coyoteTime;
+                //Defer the jump request long enough to catch a near-future landing.
+                var canJumpLater = _timeSinceJumpRequest < jumpBufferTime;
                 _requestedJump = canJumpLater;
             }
 
